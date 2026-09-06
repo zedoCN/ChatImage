@@ -41,3 +41,5 @@ bin/
 ### Mac OS ###
 .DS_Store
 !neoforge/origin/
+/fabric/fabric-26.2/run/
+/fabric/fabric-26.2/test-fixtures/

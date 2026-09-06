@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "chatimage",
+  "version": "${version}",
+  "name": "ChatImage",
+  "description": "Show Image In Chat",
+  "authors": [
+    "kitUIN"
+  ],
+  "contact": {
+    "homepage": "https://github.com/kitUIN/ChatImage",
+    "sources": "https://github.com/kitUIN/ChatImage",
+    "issues": "https://github.com/kitUIN/ChatImage/issues",
+    "email": "kulujun@gmail.com"
+  },
+  "license": "MIT",
+  "icon": "logo.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "io.github.kituin.chatimage.client.ChatImageClient"
+    ],
+    "main": [
+      "io.github.kituin.chatimage.ChatImage"
+    ],
+    "modmenu": [
+      "io.github.kituin.chatimage.integration.ModmenuIntegration"
+    ]
+  },
+  "mixins": [
+    "ChatImage.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.158.0+26.2"
+  }
+}
