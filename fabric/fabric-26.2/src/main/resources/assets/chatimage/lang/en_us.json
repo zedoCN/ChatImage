@@ -95,11 +95,15 @@
   "animation.chatimage.auto": "Use image animation timing",
   "animation.chatimage.tooltip": "Use GIF/WebP frame durations and loop count. Disable to override with manual FPS, independent of game FPS.",
   "transfer.chatimage.progress": "Uploading: %s%%",
-  "transfer.chatimage.stored": "Server stored image: %s → %s bytes",
+  "transfer.chatimage.stored": "Server stored image: %s → %s",
   "transfer.chatimage.reason.unsupported": "Server does not support hosted images",
   "upload.chatimage.auto": "Compress oversized uploads",
-  "transfer.chatimage.precompressed": "Prepared upload: %s → %s bytes (source unchanged)",
-  "transfer.chatimage.limits": "Server upload limit: %s bytes",
+  "transfer.chatimage.precompressed": "Prepared upload: %s → %s (source unchanged)",
+  "transfer.chatimage.limits": "Server upload limit: %s",
   "transfer.chatimage.reason.animation": "Animation exceeds upload limit; resize it or raise the server limit",
-  "transfer.chatimage.reason.source": "Exceeds client maxSourceBytes in chatimage-upload.json"
+  "transfer.chatimage.reason.source": "Exceeds client maxSourceBytes in chatimage-upload.json",
+  "transfer.chatimage.speed": "%s: %s%% · %s",
+  "transfer.chatimage.uploading": "Uploading",
+  "transfer.chatimage.downloading": "Downloading",
+  "transfer.chatimage.processing": "Image sent; waiting for server processing…"
 }

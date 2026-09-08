@@ -20,7 +20,7 @@ public final class ClientTransfers {
     private static final Pattern REFERENCE = Pattern.compile("mcimage://([a-f0-9-]{36})/([a-f0-9]{64})");
     private static final Pattern LOCAL = Pattern.compile("file:/+[^,\\]\\s]+");
     private static String serverId;
-    private static int maxBytes;
+    private static int maxBytes, window = 1;
     private static boolean enabled, preparing;
     private static volatile long generation;
     private static Pending active;
@@ -34,7 +34,9 @@ public final class ClientTransfers {
         byte[] upload;
         String reference;
         int size;
-        int progressBucket = -1;
+        int sent, transferred, batchWindow = 1;
+        boolean processing;
+        long lastDisplay;
         ByteArrayOutputStream download;
         Consumer<String> success;
         Pending(byte[] upload, String reference, Consumer<String> success) {
@@ -49,11 +51,11 @@ public final class ClientTransfers {
     }
     private static void message(String key, Object... args) {
         Component text = Component.translatable("transfer.chatimage." + key, args);
-        if ((key.equals("preparing") || key.equals("progress")) && mc().player != null) mc().gui.hud.setOverlayMessage(text, false);
+        if ((key.equals("preparing") || key.equals("progress") || key.equals("speed") || key.equals("processing")) && mc().player != null) mc().gui.hud.setOverlayMessage(text, false);
         else mc().gui.hud.getChat().addClientSystemMessage(text);
     }
     private static void reset() {
-        generation++; serverId = null; maxBytes = 0; enabled = false; active = null; preparing = false;
+        generation++; serverId = null; maxBytes = 0; window = 1; enabled = false; active = null; preparing = false;
         queue.clear(); retryAfter.clear(); errors.clear();
     }
     public static void register() {
@@ -65,15 +67,15 @@ public final class ClientTransfers {
         ClientPlayNetworking.registerGlobalReceiver(TransferPayload.ID, (payload, context) -> receive(payload.json()));
         ClientSendMessageEvents.ALLOW_CHAT.register(ClientTransfers::allowChat);
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (active != null) displayProgress();
             if (active != null && (System.currentTimeMillis() - active.progress > 90_000 || System.currentTimeMillis() - active.started > 1_800_000)) fail("timeout");
-            if (active == null && !preparing && serverId != null && !queue.isEmpty()) beginDownload(queue.removeFirst());
+            if (active == null && !preparing && !queue.isEmpty()) beginDownload(queue.removeFirst());
         });
     }
     public static boolean isReference(String value) { return REFERENCE.matcher(value).matches(); }
     public static void load(String reference) {
         mc().execute(() -> {
             if (!isReference(reference) || ClientStorage.ContainImageAndCheck(reference)) return;
-            if (mc().getConnection() != null && !ClientPlayNetworking.canSend(TransferPayload.ID)) { imageError(reference, "unsupported"); return; }
             if (System.currentTimeMillis() < retryAfter.getOrDefault(reference, 0L)) return;
             if (active != null && reference.equals(active.reference) || queue.contains(reference)) return;
             if (queue.size() >= 16) return;
@@ -124,13 +126,13 @@ public final class ClientTransfers {
             preparing = false;
             if (error != null) {
                 String reason = error.getCause() instanceof IOException ? error.getCause().getMessage() : "file";
-                message("limits", limit);
+                message("limits", TransferUnits.bytes(limit));
                 message("error", Component.translatable("transfer.chatimage.reason." + (Set.of("size", "format", "pixels", "animation", "source", "compression").contains(reason == null ? "" : reason) ? reason : "file")));
                 return;
             }
-            if (bytes.originalBytes() != bytes.bytes().length) message("precompressed", bytes.originalBytes(), bytes.bytes().length);
+            if (bytes.originalBytes() != bytes.bytes().length) message("precompressed", TransferUnits.bytes(bytes.originalBytes()), TransferUnits.bytes(bytes.bytes().length));
             active = new Pending(bytes.bytes(), null, done);
-            send("begin", active.id, "size", bytes.bytes().length);
+            send("begin", active.id, "size", bytes.bytes().length, "window", Math.max(1, Math.min(window, UploadOptions.get().transferWindow)));
         }));
     }
     public static boolean allowChat(String original) {
@@ -147,13 +149,36 @@ public final class ClientTransfers {
         });
         return false;
     }
+    private static DiskImageCache diskCache() {
+        return new DiskImageCache(Path.of(io.github.kituin.chatimage.client.ChatImageClient.CONFIG.cachePath).resolve("server-images"), UploadOptions.get().diskCacheBytes);
+    }
     private static void beginDownload(String reference) {
-        Matcher m = REFERENCE.matcher(reference);
-        if (!m.matches() || !enabled || !m.group(1).equals(serverId)) {
-            imageError(reference, !enabled ? "disabled" : "server"); return;
-        }
-        active = new Pending(null, reference, null);
-        send("get", active.id, "server", m.group(1), "hash", m.group(2));
+        preparing = true; long session = generation;
+        CompletableFuture.supplyAsync(() -> {
+            try { return diskCache().get(reference, UploadOptions.get().maxSourceBytes); }
+            catch (IOException e) { return null; }
+        }).whenComplete((bytes, error) -> mc().execute(() -> {
+            if (session != generation) return;
+            preparing = false;
+            if (bytes != null) { FileImageHandler.loadFile(bytes, reference); return; }
+            Matcher m = REFERENCE.matcher(reference);
+            if (!m.matches() || !enabled || !m.group(1).equals(serverId)) {
+                imageError(reference, !enabled ? "disabled" : "server"); return;
+            }
+            active = new Pending(null, reference, null);
+            send("get", active.id, "server", m.group(1), "hash", m.group(2), "window", Math.max(1, Math.min(window, UploadOptions.get().transferWindow)));
+        }));
+    }
+    private static void displayProgress() {
+        long now = System.currentTimeMillis();
+        if (now - active.lastDisplay < 500) return;
+        active.lastDisplay = now;
+        if (active.processing) { message("processing"); return; }
+        int total = active.upload != null ? active.upload.length : active.size;
+        if (total <= 0) return;
+        int percent = (int) (100L * active.transferred / total);
+        double speed = active.transferred / Math.max(0.1, (now - active.started) / 1000.0);
+        message("speed", Component.translatable("transfer.chatimage." + (active.upload != null ? "uploading" : "downloading")), Integer.toString(percent), TransferUnits.speed(speed));
     }
     public static Component errorFor(String reference) {
         String reason = errors.get(reference);
@@ -181,6 +206,7 @@ public final class ClientTransfers {
             if (op.equals("caps")) {
                 serverId = UUID.fromString(p.get("server").getAsString()).toString();
                 maxBytes = p.get("max").getAsInt();
+                window = p.has("window") ? Math.max(1, Math.min(8, p.get("window").getAsInt())) : 1;
                 enabled = maxBytes >= 8 && maxBytes < Integer.MAX_VALUE - 8 && p.get("enabled").getAsBoolean(); return;
             }
             if (active == null || !active.id.equals(p.get("id").getAsString())) return;
@@ -188,23 +214,34 @@ public final class ClientTransfers {
             switch (op) {
                 case "ready", "next" -> {
                     if (active.upload == null) throw new IOException();
+                    if (op.equals("ready")) active.batchWindow = p.has("window") ? Math.max(1, Math.min(8, p.get("window").getAsInt())) : 1;
                     int offset = op.equals("ready") ? 0 : p.get("offset").getAsInt();
                     if (offset < 0 || offset >= active.upload.length || offset % TransferPayload.CHUNK != 0) throw new IOException();
-                    int bucket = (int) ((long) offset * 4 / active.upload.length);
-                    if (bucket > active.progressBucket) { active.progressBucket = bucket; message("progress", bucket * 25); }
-                    int end = Math.min(offset + TransferPayload.CHUNK, active.upload.length);
-                    send("chunk", active.id, "offset", offset, "data", Base64.getEncoder().encodeToString(Arrays.copyOfRange(active.upload, offset, end)));
+                    if (offset != active.sent) throw new IOException();
+                    active.transferred = offset;
+                    for (int n = 0; n < active.batchWindow && active.sent < active.upload.length; n++) {
+                        int start = active.sent, end = Math.min(start + TransferPayload.CHUNK, active.upload.length);
+                        send("chunk", active.id, "offset", start, "data", Base64.getEncoder().encodeToString(Arrays.copyOfRange(active.upload, start, end)));
+                        active.sent = end;
+                    }
+                    if (active.sent == active.upload.length) active.processing = true;
                 }
+                case "processing" -> { if (active.upload == null || active.sent != active.upload.length) throw new IOException(); active.processing = true; }
                 case "stored" -> {
                     String reference = p.get("reference").getAsString();
                     if (active.upload == null || (!isReference(reference) || !reference.startsWith("mcimage://" + serverId + "/") || !ImageStore.hash(active.upload).equals(p.get("sourceHash").getAsString()))) throw new IOException();
-                    message("stored", p.get("originalBytes").getAsInt(), p.get("storedBytes").getAsInt());
+                    message("stored", TransferUnits.bytes(p.get("originalBytes").getAsLong()), TransferUnits.bytes(p.get("storedBytes").getAsLong()));
+                    if (reference.endsWith("/" + ImageStore.hash(active.upload))) {
+                        byte[] cached = active.upload;
+                        CompletableFuture.runAsync(() -> { try { diskCache().put(reference, cached); } catch (IOException ignored) { } });
+                    }
                     Consumer<String> done = active.success; active = null; done.accept(reference);
                 }
                 case "data_begin" -> {
                     if (active.reference == null) throw new IOException();
                     active.size = p.get("size").getAsInt();
                     if (active.size < 8 || active.size > UploadOptions.get().maxSourceBytes || !active.reference.endsWith("/" + p.get("hash").getAsString())) throw new IOException();
+                    active.batchWindow = p.has("window") ? Math.max(1, Math.min(8, p.get("window").getAsInt())) : 1;
                     active.download = new ByteArrayOutputStream(active.size);
                     send("read", active.id, "offset", 0);
                 }
@@ -214,6 +251,7 @@ public final class ClientTransfers {
                     if (bytes.length == 0 || bytes.length > TransferPayload.CHUNK || active.download.size() != p.get("offset").getAsInt()
                             || active.download.size() + bytes.length > active.size) throw new IOException();
                     active.download.writeBytes(bytes);
+                    active.transferred = active.download.size();
                     if (active.download.size() == active.size) {
                         byte[] image = active.download.toByteArray(); String reference = active.reference;
                         if (!reference.endsWith("/" + ImageStore.hash(image))) throw new IOException();
@@ -222,12 +260,13 @@ public final class ClientTransfers {
                         CompletableFuture.runAsync(() -> {
                             try {
                                 ImageStore.validate(image);
+                                try { diskCache().put(reference, image); } catch (IOException ignored) { }
                                 if (session == generation) {
                                     FileImageHandler.loadFile(image, reference);
                                 }
                             } catch (IOException e) { mc().execute(() -> ClientStorage.AddImageError(reference, ChatImageFrame.FrameError.FILE_LOAD_ERROR)); }
                         });
-                    } else send("read", active.id, "offset", active.download.size());
+                    } else if (active.download.size() % (TransferPayload.CHUNK * active.batchWindow) == 0) send("read", active.id, "offset", active.download.size());
                 }
                 case "error" -> fail(p.get("reason").getAsString());
                 default -> throw new IOException();

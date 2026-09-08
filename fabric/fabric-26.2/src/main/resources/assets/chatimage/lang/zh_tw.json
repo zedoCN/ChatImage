@@ -93,11 +93,15 @@
   "animation.chatimage.auto": "按图片时序自动播放",
   "animation.chatimage.tooltip": "默认按 GIF/WebP 每帧时长和循环次数播放；关闭后使用手动 FPS，不受游戏 FPS 影响。",
   "transfer.chatimage.progress": "正在上传：%s%%",
-  "transfer.chatimage.stored": "服务器已保存图片：%s → %s 字节",
+  "transfer.chatimage.stored": "服务器已保存图片：%s → %s",
   "transfer.chatimage.reason.unsupported": "服务器不支持图片托管",
   "upload.chatimage.auto": "超限自动压缩",
-  "transfer.chatimage.precompressed": "上传前已压缩：%s → %s 字节（本地原图未修改）",
-  "transfer.chatimage.limits": "服务器上传上限：%s 字节",
+  "transfer.chatimage.precompressed": "上传前已压缩：%s → %s（本地原图未修改）",
+  "transfer.chatimage.limits": "服务器上传上限：%s",
   "transfer.chatimage.reason.animation": "动图超过上传上限，请缩小动图或提高服务器限额",
-  "transfer.chatimage.reason.source": "超过客户端读取上限（chatimage-upload.json 的 maxSourceBytes）"
+  "transfer.chatimage.reason.source": "超过客户端读取上限（chatimage-upload.json 的 maxSourceBytes）",
+  "transfer.chatimage.speed": "%s：%s%% · %s",
+  "transfer.chatimage.uploading": "上传",
+  "transfer.chatimage.downloading": "下载",
+  "transfer.chatimage.processing": "图片已发送，等待服务器处理…"
 }

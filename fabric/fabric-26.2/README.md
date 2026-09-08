@@ -7,7 +7,7 @@
 
 这是 [zedoCN/ChatImage](https://github.com/zedoCN/ChatImage) 的非官方移植版本，上游项目为 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage)。
 
-1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.4%2B26.2) 下载 **`ChatImage-1.4.7-port.4+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
+1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.5%2B26.2) 下载 **`ChatImage-1.4.7-port.5+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
 2. 使用 Minecraft **26.2**、Fabric Loader **0.19.3+**、Fabric API **0.158.0+26.2** 和 **Java 25**。
 3. 关闭游戏，将 JAR 放入该实例的 `mods` 目录；HMCL 可在版本管理中打开实例文件夹。已有其他版本 ChatImage 时先移出旧 JAR，避免重复加载。
 4. 启动游戏。发送图片链接或 CICode，把鼠标移到绿色图片名称上查看图片；按 **End** 打开设置。
@@ -30,7 +30,7 @@ cd fabric/fabric-26.2
 
 Windows 使用 `gradlew.bat build`。
 
-产物：`build/libs/ChatImage-1.4.7-port.4+26.2.jar`。复制到实例的 `mods` 后重启游戏。
+产物：`build/libs/ChatImage-1.4.7-port.5+26.2.jar`。复制到实例的 `mods` 后重启游戏。
 ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖旧版 ActionLib。
 
 ## 用法
@@ -63,7 +63,7 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 python3 tests/launch_hmcl_packaged.py \
   --instance '/Applications/HMCL/.minecraft/versions/26.2-Fabric 0.19.3' \
   --game-dir run \
-  --jar build/libs/ChatImage-1.4.7-port.4+26.2.jar \
+  --jar build/libs/ChatImage-1.4.7-port.5+26.2.jar \
   --java-home /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ```
 
@@ -132,3 +132,24 @@ End 设置可关闭“超限自动压缩”。config/chatimage-upload.json 中 m
 服务端 maxInFlightBytes 必须不小于 maxFileBytes；大图片仍须满足像素/帧数保护限制。
 `retentionHours: 0` 表示永久保留，不按时间删除。存储额度满时拒绝新图片，不淘汰已有图片。
 原有默认设置不变；可选配置示例：`maxFileBytes: 20971520`、`maxStorageBytes: 2147483648`、`retentionHours: 0`、`uploadIntervalSeconds: 1`。
+
+## port.5：批量传输、磁盘缓存与限速
+
+两端都使用 port.5 时，每批最多连续发送 8×12 KiB，再批量确认；旧版仍使用单块确认。
+上传和下载显示进度、两位小数的自适应单位速度，上传结束后显示等待服务端处理。
+
+服务器图片增加磁盘缓存，位于客户端 cachePath 下的 server-images；按完整服务器 ID 与图片哈希区分，读取校验 SHA-256，损坏后回源下载。
+重连、重启游戏都可以复用；默认 512 MiB，满额清理最久未使用的客户端缓存，不删除服务器原件。
+
+客户端 config/chatimage-upload.json 配置：
+
+| 配置 | 默认 | 含义 |
+| --- | --- | --- |
+| transferWindow | 8 | 每批分块数量，1–8，与服务器协商；1 为旧版逐块方式 |
+| diskCacheBytes | 536870912 | 磁盘缓存额度，0 禁用缓存 |
+| maxSourceBytes | 67108864 | 本地图片读取与下载接收预算 |
+| autoCompress | true | 仅对超过服务器限额的静态图预压缩 |
+
+服务端 config/chatimage-server.json 增加 uploadBytesPerSecond、downloadBytesPerSecond：均为每玩家每秒图片数据字节数，默认 0 不限速；非零至少 1024。例如 1048576 表示 1 MiB/s。
+限速允许一个批次的初始突发；实际网络还包含 Base64/协议开销，不能当作物理网卡总带宽限制。
+配置调整后重启对应端生效。服务器日志记录每次成功上传的输入/保存大小、传输/处理耗时和批次数量。

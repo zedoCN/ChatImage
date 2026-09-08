@@ -85,6 +85,27 @@ public final class TransferChecks {
         Files.write(source, gif); rejects(() -> UploadPreparation.prepare(source, 8, true, gif.length + 1), "GIF not flattened");
         Files.write(source, animated); rejects(() -> UploadPreparation.prepare(source, 8, true, animated.length + 1), "Animated WebP not flattened");
         Files.delete(source);
+        Path cacheRoot = Files.createTempDirectory("chatimage-cache-");
+        String ref = "mcimage://00000000-0000-0000-0000-000000000001/" + ImageStore.hash(png);
+        DiskImageCache cache = new DiskImageCache(cacheRoot, png.length + medium.length + 1);
+        cache.put(ref, png);
+        check(Arrays.equals(new DiskImageCache(cacheRoot, png.length + medium.length + 1).get(ref, png.length), png), "Disk cache survives object restart");
+        check(cache.get(ref.replace("000000000001/", "000000000002/"), png.length) == null, "Disk cache isolates server identity");
+        check(cache.get(ref, 1) == null, "Disk cache read budget");
+        rejects(() -> cache.put(ref, medium), "Disk cache rejects mismatched hash");
+        try (var files = Files.list(cacheRoot)) { Files.write(files.findFirst().orElseThrow(), new byte[]{1,2,3}); }
+        check(cache.get(ref, png.length) == null, "Corrupt cache becomes miss");
+        cache.put(ref, png);
+        DiskImageCache smallCache = new DiskImageCache(cacheRoot, medium.length);
+        String otherRef = "mcimage://00000000-0000-0000-0000-000000000001/" + ImageStore.hash(medium);
+        smallCache.put(otherRef, medium);
+        check(smallCache.get(ref, png.length) == null && Arrays.equals(smallCache.get(otherRef, medium.length), medium), "Cache quota evicts old files");
+        check(new DiskImageCache(cacheRoot, 0).get(otherRef, medium.length) == null, "Disk cache can be disabled");
+        try (var files = Files.list(cacheRoot)) { for (Path p : files.toList()) Files.delete(p); } Files.delete(cacheRoot);
+        check(TransferUnits.bytes(1024).equals("1.00 KiB"), "KiB unit boundary");
+        check(TransferUnits.bytes(494894).equals("483.29 KiB"), "Two decimal image size");
+        check(TransferUnits.speed(2.5 * 1024 * 1024).equals("2.50 MiB/s"), "Adaptive speed unit");
+        check(TransferUnits.bytes(0).equals("0.00 B"), "Zero size formatting");
         Timeline timeline = new Timeline(new int[]{100, 400, 200}, 2);
         check(timeline.indexAt(99, true, 10) == 0 && timeline.indexAt(100, true, 10) == 1, "Unequal frame delays");
         check(timeline.indexAt(500, true, 10) == 2 && timeline.indexAt(700, true, 10) == 0, "Loop timing");

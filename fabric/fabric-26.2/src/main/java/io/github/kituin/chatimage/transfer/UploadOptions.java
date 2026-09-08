@@ -6,6 +6,8 @@ import net.fabricmc.loader.api.FabricLoader;
 
 public final class UploadOptions {
     public boolean autoCompress = true;
+    public int transferWindow = 8;
+    public long diskCacheBytes = 512L * 1024 * 1024;
     public int maxSourceBytes = 64 * 1024 * 1024;
     private static UploadOptions current;
     private static Path path() { return FabricLoader.getInstance().getConfigDir().resolve("chatimage-upload.json"); }

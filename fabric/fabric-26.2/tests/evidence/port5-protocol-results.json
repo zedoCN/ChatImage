@@ -1,0 +1,57 @@
+[
+  {
+    "op": "caps",
+    "id": "b3a2fb67-27e9-476c-82f0-48291ed647e2",
+    "server": "dc7914ed-09b7-4493-b484-ab5af03d6b5f",
+    "enabled": "true",
+    "max": "20971520",
+    "window": "8"
+  },
+  {
+    "op": "error",
+    "id": "2f3de207-1a37-4f08-aa17-12866b02dbbc",
+    "reason": "size"
+  },
+  {
+    "op": "error",
+    "id": "444f91f3-e136-49b0-a59e-9188052bd42e",
+    "reason": "server"
+  },
+  {
+    "op": "error",
+    "id": "cc270d6d-4eeb-471c-b740-280e580bb15c",
+    "reason": "reference"
+  },
+  {
+    "op": "error",
+    "id": "1c73466b-71e8-4f34-a016-3ab80ca69299",
+    "reason": "missing"
+  },
+  {
+    "op": "ready",
+    "id": "c04f8b12-71db-4faf-ac75-70bdb26f71c8",
+    "offset": "0",
+    "window": "1"
+  },
+  {
+    "op": "error",
+    "id": "c04f8b12-71db-4faf-ac75-70bdb26f71c8",
+    "reason": "sequence"
+  },
+  {
+    "op": "error",
+    "id": "4377b40e-d61a-4229-a4f0-84cc25863a2b",
+    "reason": "rate"
+  },
+  {
+    "op": "ready",
+    "id": "9855468e-59d8-4578-a4df-dee5cbd5181f",
+    "offset": "0",
+    "window": "1"
+  },
+  {
+    "op": "error",
+    "id": "9855468e-59d8-4578-a4df-dee5cbd5181f",
+    "reason": "format"
+  }
+]
