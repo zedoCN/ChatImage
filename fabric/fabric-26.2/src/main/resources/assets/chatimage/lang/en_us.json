@@ -36,7 +36,7 @@
   "channel.chatimage.gui": "Channel",
   "online.chatimage.gui": "Online",
   "offline.chatimage.gui": "Offline",
-  "config.chatimage.category": "Chat Image",
+  "key.category.chatimage.general": "Chat Image",
   "config.chatimage.key": "Open Configuration File Settings",
   "gif.chatimage.gui": "GIF rate",
   "experimental.component.chatimage.gui": "Compatible TextComponent",

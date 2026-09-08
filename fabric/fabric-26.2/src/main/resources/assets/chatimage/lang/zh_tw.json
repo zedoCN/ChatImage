@@ -36,7 +36,7 @@
   "online.chatimage.gui": "線上",
   "offline.chatimage.gui": "離線",
   "cq.chatimage.tooltip": "開啟後將識別[CQ:image]",
-  "config.chatimage.category": "聊天欄圖片顯示",
+  "key.category.chatimage.general": "聊天欄圖片顯示",
   "config.chatimage.key": "打开設定檔設定",
   "gif.chatimage.gui": "GIF速率",
   "timeout.chatimage.gui": "圖片載入逾時",

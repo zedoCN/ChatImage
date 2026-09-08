@@ -7,7 +7,7 @@
 
 这是 [zedoCN/ChatImage](https://github.com/zedoCN/ChatImage) 的非官方移植版本，上游项目为 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage)。
 
-1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.1%2B26.2) 下载 **`ChatImage-1.4.7-port.1+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
+1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.2%2B26.2) 下载 **`ChatImage-1.4.7-port.2+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
 2. 使用 Minecraft **26.2**、Fabric Loader **0.19.3+**、Fabric API **0.158.0+26.2** 和 **Java 25**。
 3. 关闭游戏，将 JAR 放入该实例的 `mods` 目录；HMCL 可在版本管理中打开实例文件夹。已有其他版本 ChatImage 时先移出旧 JAR，避免重复加载。
 4. 启动游戏。发送图片链接或 CICode，把鼠标移到绿色图片名称上查看图片；按 **End** 打开设置。
@@ -30,7 +30,7 @@ cd fabric/fabric-26.2
 
 Windows 使用 `gradlew.bat build`。
 
-产物：`build/libs/ChatImage-1.4.7-port.1+26.2.jar`。复制到实例的 `mods` 后重启游戏。
+产物：`build/libs/ChatImage-1.4.7-port.2+26.2.jar`。复制到实例的 `mods` 后重启游戏。
 ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖旧版 ActionLib。
 
 ## 用法
@@ -63,8 +63,12 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 python3 tests/launch_hmcl_packaged.py \
   --instance '/Applications/HMCL/.minecraft/versions/26.2-Fabric 0.19.3' \
   --game-dir run \
-  --jar build/libs/ChatImage-1.4.7-port.1+26.2.jar \
+  --jar build/libs/ChatImage-1.4.7-port.2+26.2.jar \
   --java-home /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ```
 
 测试目录、桥接配置及其认证信息、缓存、世界和运行日志被 Git 忽略。启动脚本只使用离线测试身份，不读取 HMCL 账户凭据。
+
+## 1.4.7-port.2 更新
+
+修复 26.2 按键设置的 ChatImage 分类标题显示原始翻译键的问题，补齐简体中文、繁体中文、英文和韩文分类翻译。End 默认键位不变。

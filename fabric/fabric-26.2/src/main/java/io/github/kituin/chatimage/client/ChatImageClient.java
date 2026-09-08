@@ -53,7 +53,7 @@ public class ChatImageClient implements ClientModInitializer {
                 "config.chatimage.key",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_END,
-                KeyMapping.Category.register(net.minecraft.resources.Identifier.withDefaultNamespace("config.chatimage.category"))
+                KeyMapping.Category.register(net.minecraft.resources.Identifier.fromNamespaceAndPath("chatimage", "general"))
         ));
         ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
             while (configKeyBinding.consumeClick()) {

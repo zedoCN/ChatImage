@@ -36,7 +36,7 @@
   "online.chatimage.gui": "在线",
   "offline.chatimage.gui": "离线",
   "cq.chatimage.tooltip": "开启后将识别[CQ:image]",
-  "config.chatimage.category": "聊天栏图片显示",
+  "key.category.chatimage.general": "聊天栏图片显示",
   "config.chatimage.key": "打开配置文件设置",
   "gif.chatimage.gui": "GIF速率",
   "experimental.component.chatimage.gui": "文本组件兼容",
