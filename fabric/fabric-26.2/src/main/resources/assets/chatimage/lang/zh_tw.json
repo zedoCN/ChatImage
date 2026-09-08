@@ -103,5 +103,7 @@
   "transfer.chatimage.speed": "%s：%s%% · %s",
   "transfer.chatimage.uploading": "上传",
   "transfer.chatimage.downloading": "下载",
-  "transfer.chatimage.processing": "图片已发送，等待服务器处理…"
+  "transfer.chatimage.processing": "图片已发送，等待服务器处理…",
+  "transfer.chatimage.multi_limit": "合并后的图片消息超过聊天 256 字符上限，请减少图片或文字（通常最多两张）",
+  "transfer.chatimage.batch": "正在上传第 %s/%s 张图片"
 }

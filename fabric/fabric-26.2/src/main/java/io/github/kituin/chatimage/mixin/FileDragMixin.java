@@ -33,10 +33,11 @@ public class FileDragMixin {
                 this.minecraft.level != null && ChatImageClient.CONFIG.dragImage) {
             StringBuilder sb = new StringBuilder();
             for (Path o : paths) {
+                if (!sb.isEmpty()) sb.append(" ");
                 if (ChatImageClient.CONFIG.dragUseCicode) {
-                    sb.append("[[CICode,url=").append(o.toUri()).append("]]");
+                    sb.append("[[CICode,url=").append(io.github.kituin.chatimage.transfer.LocalImagePaths.attachment(o)).append("]]");
                 } else {
-                    sb.append(o.toUri());
+                    sb.append(io.github.kituin.chatimage.transfer.LocalImagePaths.attachment(o));
                 }
             }
             this.minecraft.gui.setScreen(new ChatScreen(sb.toString(), true));

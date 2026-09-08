@@ -11,7 +11,7 @@
 
 **Fabric 26.2 移植版（非官方 fork）**
 
-[⬇️ 下载已构建 JAR](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.5%2B26.2) · [安装与使用说明](fabric/fabric-26.2/README.md) · [MCP 实机验证](fabric/fabric-26.2/tests/MCP-VALIDATION.md)
+[⬇️ 下载已构建 JAR](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.6%2B26.2) · [安装与使用说明](fabric/fabric-26.2/README.md) · [MCP 实机验证](fabric/fabric-26.2/tests/MCP-VALIDATION.md)
 
 本 fork 基于 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage) 1.4.7，新增 Minecraft **26.2 / Fabric / Java 25** 支持，以及可选服务端上传、WebP 压缩和按原始时序播放 GIF/WebP 动图，保留上游作者署名和 MIT 授权。26.2 的安装方式以链接中的说明为准；下方保留上游项目介绍。
 

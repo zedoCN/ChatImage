@@ -45,7 +45,7 @@ public class WindowsPasteCompat implements IPasteCompat {
     private String getImageCICode(Object object) throws IOException {
         StringBuilder sb = new StringBuilder();
         if (object instanceof File) {
-            sb.append("[[CICode,url=file:///").append(((File) object).getPath()).append("]]");
+            sb.append("[[CICode,url=").append(io.github.kituin.chatimage.transfer.LocalImagePaths.toUrl(((File) object).toPath())).append("]]");
         } else if (object instanceof BufferedImage) {
             BufferedImage image = (BufferedImage) object;
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -55,7 +55,7 @@ public class WindowsPasteCompat implements IPasteCompat {
             String fileName = io.github.kituin.chatimage.client.ChatImageClient.CONFIG.cachePath + "/" + DigestUtils.md5Hex(byteArr) + "." + TempFileType;
             File outputfile = new File(fileName);
             ImageIO.write(image, TempFileType, outputfile);
-            sb.append("[[CICode,url=file:///").append(outputfile.getAbsolutePath()).append("]]");
+            sb.append("[[CICode,url=").append(io.github.kituin.chatimage.transfer.LocalImagePaths.toUrl(outputfile.toPath())).append("]]");
         } else {
             return null;
         }

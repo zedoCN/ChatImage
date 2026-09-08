@@ -7,7 +7,7 @@
 
 这是 [zedoCN/ChatImage](https://github.com/zedoCN/ChatImage) 的非官方移植版本，上游项目为 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage)。
 
-1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.5%2B26.2) 下载 **`ChatImage-1.4.7-port.5+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
+1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.6%2B26.2) 下载 **`ChatImage-1.4.7-port.6+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
 2. 使用 Minecraft **26.2**、Fabric Loader **0.19.3+**、Fabric API **0.158.0+26.2** 和 **Java 25**。
 3. 关闭游戏，将 JAR 放入该实例的 `mods` 目录；HMCL 可在版本管理中打开实例文件夹。已有其他版本 ChatImage 时先移出旧 JAR，避免重复加载。
 4. 启动游戏。发送图片链接或 CICode，把鼠标移到绿色图片名称上查看图片；按 **End** 打开设置。
@@ -30,7 +30,7 @@ cd fabric/fabric-26.2
 
 Windows 使用 `gradlew.bat build`。
 
-产物：`build/libs/ChatImage-1.4.7-port.5+26.2.jar`。复制到实例的 `mods` 后重启游戏。
+产物：`build/libs/ChatImage-1.4.7-port.6+26.2.jar`。复制到实例的 `mods` 后重启游戏。
 ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖旧版 ActionLib。
 
 ## 用法
@@ -63,7 +63,7 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 python3 tests/launch_hmcl_packaged.py \
   --instance '/Applications/HMCL/.minecraft/versions/26.2-Fabric 0.19.3' \
   --game-dir run \
-  --jar build/libs/ChatImage-1.4.7-port.5+26.2.jar \
+  --jar build/libs/ChatImage-1.4.7-port.6+26.2.jar \
   --java-home /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ```
 
@@ -153,3 +153,12 @@ End 设置可关闭“超限自动压缩”。config/chatimage-upload.json 中 m
 服务端 config/chatimage-server.json 增加 uploadBytesPerSecond、downloadBytesPerSecond：均为每玩家每秒图片数据字节数，默认 0 不限速；非零至少 1024。例如 1048576 表示 1 MiB/s。
 限速允许一个批次的初始突发；实际网络还包含 Base64/协议开销，不能当作物理网卡总带宽限制。
 配置调整后重启对应端生效。服务器日志记录每次成功上传的输入/保存大小、传输/处理耗时和批次数量。
+
+## port.6：Windows 粘贴修复与同条消息多图
+
+修复 Windows 剪贴板把反斜杠路径直接拼进 file:/// 导致 URI 解析失败的问题，使用正确转义的文件 URI，并兼容旧版 Windows 路径。
+拖入/粘贴使用进程内短附件标记，避免长本地路径先触及聊天输入长度限制。
+
+一次拖入多张图片，或在聊天里继续粘贴图片，回车后依次上传；全部成功才发送一条合并消息。上传间隔按服务端协商执行；旧服务端使用保守 5 秒间隔。
+原版聊天仍有 256 字符限制，完整服务器图片引用通常最多两张，文字/名称会占用额度。超过限制会在上传前提示拆分，不截断消息。
+Windows 原生截图剪贴板最终操作需在 Windows 客户端复测；测试已覆盖其图片转 PNG/URI 分支及文件路径规范化。

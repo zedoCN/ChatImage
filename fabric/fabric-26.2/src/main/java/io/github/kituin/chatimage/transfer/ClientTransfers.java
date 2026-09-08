@@ -24,6 +24,8 @@ public final class ClientTransfers {
     private static boolean enabled, preparing;
     private static volatile long generation;
     private static Pending active;
+    private static Runnable batchNext;
+    private static long batchNextAt, lastUploadStart, uploadIntervalMillis = 5000;
     private static final ArrayDeque<String> queue = new ArrayDeque<>();
     private static final Map<String, Long> retryAfter = new LinkedHashMap<>();
     private static final Map<String, String> errors = new LinkedHashMap<>();
@@ -55,7 +57,7 @@ public final class ClientTransfers {
         else mc().gui.hud.getChat().addClientSystemMessage(text);
     }
     private static void reset() {
-        generation++; serverId = null; maxBytes = 0; window = 1; enabled = false; active = null; preparing = false;
+        generation++; serverId = null; maxBytes = 0; window = 1; batchNext = null; uploadIntervalMillis = 5000; enabled = false; active = null; preparing = false;
         queue.clear(); retryAfter.clear(); errors.clear();
     }
     public static void register() {
@@ -69,7 +71,8 @@ public final class ClientTransfers {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (active != null) displayProgress();
             if (active != null && (System.currentTimeMillis() - active.progress > 90_000 || System.currentTimeMillis() - active.started > 1_800_000)) fail("timeout");
-            if (active == null && !preparing && !queue.isEmpty()) beginDownload(queue.removeFirst());
+            if (active == null && !preparing && batchNext != null && System.currentTimeMillis() >= batchNextAt) { Runnable next = batchNext; batchNext = null; next.run(); }
+            if (active == null && !preparing && batchNext == null && !queue.isEmpty()) beginDownload(queue.removeFirst());
         });
     }
     public static boolean isReference(String value) { return REFERENCE.matcher(value).matches(); }
@@ -107,7 +110,7 @@ public final class ClientTransfers {
     }
     public static void upload(String input, Consumer<String> done) {
         if (!supported()) return;
-        if (active != null || preparing) { message("busy"); return; }
+        if (active != null || preparing || batchNext != null) { message("busy"); return; }
         preparing = true;
         long session = generation;
         final String argument = input;
@@ -117,7 +120,7 @@ public final class ClientTransfers {
             try {
                 String path = argument;
                 if (path.startsWith("\"") && path.endsWith("\"")) path = path.substring(1, path.length() - 1);
-                Path file = path.startsWith("file:") ? Path.of(URI.create(path)) : Path.of(path);
+                Path file = LocalImagePaths.parse(path);
                 if (!Files.isRegularFile(file)) throw new IOException("file");
                 return UploadPreparation.prepare(file, limit, UploadOptions.get().autoCompress, UploadOptions.get().maxSourceBytes);
             } catch (Exception e) { throw new java.util.concurrent.CompletionException(e); }
@@ -132,22 +135,29 @@ public final class ClientTransfers {
             }
             if (bytes.originalBytes() != bytes.bytes().length) message("precompressed", TransferUnits.bytes(bytes.originalBytes()), TransferUnits.bytes(bytes.bytes().length));
             active = new Pending(bytes.bytes(), null, done);
+            lastUploadStart = active.started;
             send("begin", active.id, "size", bytes.bytes().length, "window", Math.max(1, Math.min(window, UploadOptions.get().transferWindow)));
         }));
     }
     public static boolean allowChat(String original) {
-        Matcher matcher = LOCAL.matcher(original);
-        if (!matcher.find()) return true;
-        // One image per chat send keeps references below Minecraft's chat message length limit.
-        String local = matcher.group(); int start = matcher.start(), end = matcher.end();
-        boolean wrapped = original.lastIndexOf("[[CICode,", start) > original.lastIndexOf("]]", start);
-        if (matcher.find()) { message("one"); return false; }
-        String prospective = original.substring(0, start) + "mcimage://" + "0".repeat(36) + "/" + "0".repeat(64) + original.substring(end);
-        if (prospective.length() + (wrapped ? 0 : 15) > 256) { message("length"); return false; }
-        upload(local, reference -> {
-            if (mc().player != null) mc().player.connection.sendChat(original.substring(0, start) + (wrapped ? reference : code(reference)) + original.substring(end));
-        });
+        MultiImageMessage plan = new MultiImageMessage(original);
+        if (plan.size() == 0) return true;
+        if (active != null || preparing || batchNext != null) { message("busy"); return false; }
+        if (!plan.fits()) { message("multi_limit"); return false; }
+        uploadBatch(plan, new ArrayList<>());
         return false;
+    }
+    private static void uploadBatch(MultiImageMessage plan, List<String> references) {
+        if (plan.size() > 1) message("batch", Integer.toString(references.size() + 1), Integer.toString(plan.size()));
+        upload(plan.input(references.size()), reference -> {
+            references.add(reference);
+            if (references.size() == plan.size()) {
+                if (mc().player != null) mc().player.connection.sendChat(plan.render(references));
+            } else {
+                batchNextAt = Math.max(System.currentTimeMillis(), lastUploadStart + uploadIntervalMillis + 100);
+                batchNext = () -> uploadBatch(plan, references);
+            }
+        });
     }
     private static DiskImageCache diskCache() {
         return new DiskImageCache(Path.of(io.github.kituin.chatimage.client.ChatImageClient.CONFIG.cachePath).resolve("server-images"), UploadOptions.get().diskCacheBytes);
@@ -206,6 +216,7 @@ public final class ClientTransfers {
             if (op.equals("caps")) {
                 serverId = UUID.fromString(p.get("server").getAsString()).toString();
                 maxBytes = p.get("max").getAsInt();
+                uploadIntervalMillis = p.has("interval") ? Math.max(0, p.get("interval").getAsLong()) * 1000L : 5000;
                 window = p.has("window") ? Math.max(1, Math.min(8, p.get("window").getAsInt())) : 1;
                 enabled = maxBytes >= 8 && maxBytes < Integer.MAX_VALUE - 8 && p.get("enabled").getAsBoolean(); return;
             }

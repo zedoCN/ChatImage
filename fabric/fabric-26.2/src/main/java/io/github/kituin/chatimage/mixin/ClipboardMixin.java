@@ -27,6 +27,6 @@ public class ClipboardMixin {
         if (!(this.minecraft.gui.screen() instanceof net.minecraft.client.gui.screens.ChatScreen)) return;
         String pasteImage = PasteToolkit.getPasteCompat().doPaste();
         if (pasteImage == null) return;
-        cir.setReturnValue(pasteImage);
+        cir.setReturnValue(io.github.kituin.chatimage.transfer.LocalImagePaths.shorten(pasteImage));
     }
 }

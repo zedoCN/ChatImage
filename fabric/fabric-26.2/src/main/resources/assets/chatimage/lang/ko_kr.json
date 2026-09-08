@@ -101,5 +101,7 @@
   "transfer.chatimage.speed": "%s: %s%% · %s",
   "transfer.chatimage.uploading": "Uploading",
   "transfer.chatimage.downloading": "Downloading",
-  "transfer.chatimage.processing": "Image sent; waiting for server processing…"
+  "transfer.chatimage.processing": "Image sent; waiting for server processing…",
+  "transfer.chatimage.multi_limit": "Combined message exceeds 256 characters. Use fewer images or less text (usually up to two images).",
+  "transfer.chatimage.batch": "Uploading image %s/%s"
 }

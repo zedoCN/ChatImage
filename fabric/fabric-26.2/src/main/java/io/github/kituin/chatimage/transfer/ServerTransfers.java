@@ -147,7 +147,7 @@ public final class ServerTransfers {
             if (!id.matches("[a-f0-9-]{36}")) throw new IOException("request");
             String op = p.get("op").getAsString();
             if (op.equals("hello")) {
-                reply(player, "caps", id, "server", store.serverId, "enabled", config.enabled, "max", config.maxFileBytes, "window", 8); return;
+                reply(player, "caps", id, "server", store.serverId, "enabled", config.enabled, "max", config.maxFileBytes, "window", 8, "interval", config.uploadIntervalSeconds); return;
             }
             if (!config.enabled) throw new IOException("disabled");
             switch (op) {
