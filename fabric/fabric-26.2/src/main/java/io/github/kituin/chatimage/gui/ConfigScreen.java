@@ -44,6 +44,11 @@ public class ConfigScreen extends Screen {
             button.setMessage(getNsfw(CONFIG.nsfw));
             ChatImageConfig.saveConfig(CONFIG);
         }).tooltip(Tooltip.create(Component.translatable("nsfw.chatimage.tooltip"))).build());
+        adder.addChild(Button.builder(getEnable("animation.chatimage.auto", io.github.kituin.chatimage.animation.Playback.automatic), button -> {
+            io.github.kituin.chatimage.animation.Playback.automatic = !io.github.kituin.chatimage.animation.Playback.automatic;
+            io.github.kituin.chatimage.animation.Playback.save();
+            button.setMessage(getEnable("animation.chatimage.auto", io.github.kituin.chatimage.animation.Playback.automatic));
+        }).tooltip(Tooltip.create(Component.translatable("animation.chatimage.tooltip"))).build());
         adder.addChild(new GifSlider());
         adder.addChild(new TimeOutSlider());
         adder.addChild(Button.builder(Component.translatable("padding.chatimage.gui"), (button) -> {

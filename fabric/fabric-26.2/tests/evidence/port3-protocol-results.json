@@ -1,0 +1,52 @@
+[
+  {
+    "op": "caps",
+    "id": "af318475-e3e2-49e2-892b-ec93c71bd418",
+    "server": "dc7914ed-09b7-4493-b484-ab5af03d6b5f",
+    "enabled": "true",
+    "max": "5242880"
+  },
+  {
+    "op": "error",
+    "id": "4dc8fa80-c10e-4871-97f6-a0a7c019edc2",
+    "reason": "size"
+  },
+  {
+    "op": "error",
+    "id": "ee31d8fe-c292-4cdf-b8cf-a30c17b858d5",
+    "reason": "server"
+  },
+  {
+    "op": "error",
+    "id": "b8f57cab-a795-49da-93c8-a5381a83abdf",
+    "reason": "reference"
+  },
+  {
+    "op": "error",
+    "id": "e71e8620-56a9-4022-93ab-3c8c6df6c165",
+    "reason": "missing"
+  },
+  {
+    "op": "ready",
+    "id": "53ea7692-723c-46da-8efa-945eb7a81c39"
+  },
+  {
+    "op": "error",
+    "id": "53ea7692-723c-46da-8efa-945eb7a81c39",
+    "reason": "sequence"
+  },
+  {
+    "op": "error",
+    "id": "d6cf7539-2b39-418b-ae0b-fa6d1698440a",
+    "reason": "rate"
+  },
+  {
+    "op": "ready",
+    "id": "10067087-c2e7-4c80-b185-08a75e09678f"
+  },
+  {
+    "op": "error",
+    "id": "10067087-c2e7-4c80-b185-08a75e09678f",
+    "reason": "format"
+  }
+]

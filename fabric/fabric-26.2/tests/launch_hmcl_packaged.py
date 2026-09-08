@@ -10,11 +10,14 @@ import json
 import os
 from pathlib import Path
 import platform
-import re
+import uuid
 import shutil
 import subprocess
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--username', default='ChatImageTest')
+parser.add_argument('--connect')
+parser.add_argument('--bridge-port', type=int)
 parser.add_argument('--instance', type=Path, required=True)
 parser.add_argument('--game-dir', type=Path, required=True)
 parser.add_argument('--jar', type=Path, required=True)
@@ -66,6 +69,9 @@ for source in sorted((instance / 'mods').glob('*.jar')):
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
     assert hashlib.sha256(target.read_bytes()).hexdigest() == digest
     manifest[source.name] = digest
+for previous in mods.glob('ChatImage-*.jar'):
+    if previous.name != jar.name:
+        previous.rename(previous.with_suffix('.jar.disabled'))
 shutil.copy2(jar, mods / jar.name)
 (game_dir / 'hmcl-mods-sha256.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 config = game_dir / 'config'
@@ -74,11 +80,17 @@ bridge = instance / 'config' / 'mcpfabric.config.json'
 if bridge.exists():
     shutil.copy2(bridge, config / bridge.name)
     os.chmod(config / bridge.name, 0o600)
+    if args.bridge_port:
+        bridge_config = json.loads((config / bridge.name).read_text())
+        bridge_config['port'] = args.bridge_port
+        (config / bridge.name).write_text(json.dumps(bridge_config))
 command = [str(args.java_home / 'bin/java'), '-XstartOnFirstThread', '-Xmx2G',
            '--sun-misc-unsafe-memory-access=allow', '--enable-native-access=ALL-UNNAMED',
            '-cp', os.pathsep.join(classpath), metadata['mainClass'],
-           '--username', 'ChatImageTest', '--version', '26.2', '--gameDir', str(game_dir),
+           '--username', args.username, '--version', '26.2', '--gameDir', str(game_dir),
            '--assetsDir', str(root / 'assets'), '--assetIndex', metadata['assets'],
-           '--uuid', 'b771a8eb750b378ea65269a6c6f9e951', '--accessToken', '0', '--versionType', 'release']
+           '--uuid', str(uuid.UUID(bytes=hashlib.md5(('OfflinePlayer:' + args.username).encode()).digest(), version=3)).replace('-', ''), '--accessToken', '0', '--versionType', 'release']
+if args.connect:
+    command.extend(['--quickPlayMultiplayer', args.connect])
 print(f'Launching packaged {jar.name} with {len(manifest)} unchanged HMCL mod JARs', flush=True)
 raise SystemExit(subprocess.call(command, cwd=game_dir))

@@ -1,5 +1,5 @@
 plugins { id 'net.fabricmc.fabric-loom' version '1.17.11' }
-version = '1.4.7-port.2+26.2'
+version = '1.4.7-port.3+26.2'
 group = 'io.github.kituin'
 base { archivesName = 'ChatImage' }
 repositories {
@@ -12,6 +12,9 @@ dependencies {
     implementation 'net.fabricmc:fabric-loader:0.19.3'
     implementation 'net.fabricmc.fabric-api:fabric-api:0.158.0+26.2'
     include implementation('io.github.kituin:ChatImageCode:0.12.2')
+    include implementation('org.glavo:webp:0.2.0')
+    include implementation('com.github.usefulness:webp-imageio:0.11.0')
+    include implementation('org.jetbrains.kotlin:kotlin-stdlib:2.4.0')
     compileOnly 'com.terraformersmc:modmenu:20.0.1'
 }
 java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() }
@@ -26,5 +29,26 @@ jar { from('LICENSE') { rename { "${it}_ChatImage" } } }
 if (providers.gradleProperty('hmclAssets').isPresent()) {
     loom.runs.client {
         programArgs '--assetsDir', providers.gradleProperty('hmclAssets').get(), '--assetIndex', '32'
+    }
+}
+
+// Exercise server storage and codecs without starting Minecraft or a graphical desktop.
+sourceSets {
+    verification {
+        compileClasspath += sourceSets.main.output + configurations.runtimeClasspath
+        runtimeClasspath += sourceSets.main.output + configurations.runtimeClasspath
+    }
+}
+tasks.register('transferChecks', JavaExec) {
+    dependsOn verificationClasses
+    classpath = sourceSets.verification.runtimeClasspath
+    mainClass = 'io.github.kituin.chatimage.TransferChecks'
+    jvmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
+}
+tasks.named('check') { dependsOn 'transferChecks' }
+if (providers.gradleProperty('transferTestServerDir').isPresent()) {
+    loom.runs.server {
+        runDir providers.gradleProperty('transferTestServerDir').get()
+        vmArgs '-Djava.awt.headless=true', '--enable-native-access=ALL-UNNAMED'
     }
 }

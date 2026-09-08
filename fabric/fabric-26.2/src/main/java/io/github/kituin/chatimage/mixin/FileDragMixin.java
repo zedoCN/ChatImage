@@ -34,9 +34,9 @@ public class FileDragMixin {
             StringBuilder sb = new StringBuilder();
             for (Path o : paths) {
                 if (ChatImageClient.CONFIG.dragUseCicode) {
-                    sb.append("[[CICode,url=file:///").append(o).append("]]");
+                    sb.append("[[CICode,url=").append(o.toUri()).append("]]");
                 } else {
-                    sb.append("file:///").append(o);
+                    sb.append(o.toUri());
                 }
             }
             this.minecraft.gui.setScreen(new ChatScreen(sb.toString(), true));

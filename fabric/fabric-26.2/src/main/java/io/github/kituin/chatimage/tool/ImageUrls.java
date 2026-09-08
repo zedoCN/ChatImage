@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public final class ImageUrls {
     private ImageUrls() { }
     private static final Pattern IMAGE = Pattern.compile(
-            "(?i)(https?://|file:///)?([\\w-]+(\\.[\\w-]+)*)(:[0-9]{1,5})?(\\/[^\\s]*)?\\.(png!thumbnail|bmp|png|jpe?g|gif|ico)(\\?[^\\s<>\\[\\]]*)?");
+            "(?i)(https?://|file:///)?([\\w-]+(\\.[\\w-]+)*)(:[0-9]{1,5})?(\\/[^\\s]*)?\\.(png!thumbnail|bmp|png|jpe?g|gif|webp|ico)(\\?[^\\s<>\\[\\]]*)?");
 
     public static void replace(List<Object> parts, boolean isSelf, ChatImageBoolean allString) {
         List<Object> result = new ArrayList<>();

@@ -13,7 +13,9 @@
     "ClipboardMixin",
     "FileDragMixin",
     "DrawContextMixin",
-    "ScreenMixin"
+    "ScreenMixin",
+    "ServerImageCodeMixin",
+    "AnimatedImageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -67,6 +67,7 @@ public abstract class DrawContextMixin {
             if (code != null) {
                 if (CONFIG.nsfw || !code.isNsfw() || ClientStorage.ContainNsfw(code.getUrl())) {
                     ChatImageFrame frame = code.getFrame();
+                    io.github.kituin.chatimage.animation.Playback.advance(frame);
                     if (frame.loadImage(CONFIG.limitWidth, CONFIG.limitHeight)) {
                         int viewWidth = frame.getWidth();
                         int viewHeight = frame.getHeight();
@@ -91,9 +92,9 @@ public abstract class DrawContextMixin {
                                 (Identifier) frame.getId(), l + CONFIG.paddingLeft, m + CONFIG.paddingTop, 0, 0, viewWidth, viewHeight, viewWidth, viewHeight
                         );
                         this.pose.popMatrix();
-                        frame.gifLoop(CONFIG.gifSpeed);
                     } else {
-                        MutableComponent text = (MutableComponent) frame.getErrorMessage(
+                        Component transferError = io.github.kituin.chatimage.transfer.ClientTransfers.errorFor(code.getUrl());
+                        MutableComponent text = transferError != null ? transferError.copy() : (MutableComponent) frame.getErrorMessage(
                                 (str) -> createLiteralComponent((String) str),
                                 (str) -> createTranslatableComponent((String) str),
                                 (obj, s) -> ((MutableComponent) obj).append((Component) s), code);

@@ -1,0 +1,17 @@
+ChatImage Fabric 26.2 port: MIT, derived from kitUIN/ChatImage.
+
+Embedded dependencies added by this port:
+- JWebP (org.glavo:webp:0.2.0), Copyright 2026 Glavo.
+  Apache License 2.0, as declared by version 0.2.0's POM and source headers.
+  Sources: https://repo.maven.apache.org/maven2/org/glavo/webp/0.2.0/webp-0.2.0-sources.jar
+  https://github.com/Glavo/jwebp
+- WebP ImageIO (com.github.usefulness:webp-imageio:0.11.0).
+  Apache License 2.0. Its nested JAR preserves LICENSE and NOTICE, including
+  libwebp licensing and bundled native library notices.
+  https://github.com/usefulness/webp-imageio
+- Kotlin standard library (org.jetbrains.kotlin:kotlin-stdlib:2.4.0).
+  Apache License 2.0. Its nested JAR preserves its original META-INF notices.
+  https://github.com/JetBrains/kotlin
+
+The Apache License 2.0 text is included alongside this notice.
+Existing ChatImageCode 0.12.2 remains embedded with its original contents.

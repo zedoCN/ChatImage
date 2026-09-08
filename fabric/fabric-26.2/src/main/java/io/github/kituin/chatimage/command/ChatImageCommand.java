@@ -17,6 +17,15 @@ import static io.github.kituin.chatimage.tool.SimpleUtil.createTranslatableCompo
 public class ChatImageCommand {
     public static int sendChatImage(CommandContext<FabricClientCommandSource> context) {
         String url = StringArgumentType.getString(context, "url");
+        if (url.startsWith("file:")) {
+            String requestedName;
+            try { requestedName = StringArgumentType.getString(context, "name"); }
+            catch (IllegalArgumentException ignored) { requestedName = ChatImageCode.DEFAULT_NAME; }
+            final String imageName = requestedName;
+            io.github.kituin.chatimage.transfer.ClientTransfers.upload(url, reference ->
+                context.getSource().getPlayer().connection.sendChat(ChatImageCodeInstance.createBuilder().setUrlForce(reference).setName(imageName).build().toString()));
+            return Command.SINGLE_SUCCESS;
+        }
         ChatImageCode.Builder builder = ChatImageCodeInstance.createBuilder().setUrlForce(url);
         try {
             String name = StringArgumentType.getString(context, "name");
@@ -34,6 +43,7 @@ public class ChatImageCommand {
                 getHelpText("/chatimage help", "", "help.chatimage.command")
                         .append(getHelpText("/chatimage send ", "<name> <url>", "send.chatimage.command"))
                         .append(getHelpText("/chatimage url ", "<url>", "url.chatimage.command"))
+                        .append(getHelpText("/chatimage upload ", "<path|clipboard>", "transfer.chatimage.help"))
                         .append(getHelpText("/chatimage reload ", "", "reload.chatimage.command"))
         );
         return Command.SINGLE_SUCCESS;

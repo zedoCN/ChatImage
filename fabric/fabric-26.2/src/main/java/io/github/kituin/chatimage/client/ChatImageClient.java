@@ -8,7 +8,6 @@ import io.github.kituin.chatimage.command.ChatImageCommand;
 import io.github.kituin.chatimage.gui.ConfigScreen;
 import io.github.kituin.chatimage.integration.ChatImageClientAdapter;
 import io.github.kituin.chatimage.integration.ChatImageLogger;
-import io.github.kituin.chatimage.network.ChatImagePacket;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -23,8 +22,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
-import io.github.kituin.chatimage.network.DownloadFileChannelPacket;
-import io.github.kituin.chatimage.network.FileInfoChannelPacket;
 import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static com.mojang.brigadier.arguments.StringArgumentType.string;
 import static io.github.kituin.chatimage.tool.SimpleUtil.setScreen;
@@ -49,6 +46,8 @@ public class ChatImageClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
 
+        io.github.kituin.chatimage.transfer.ClientTransfers.register();
+        io.github.kituin.chatimage.animation.Playback.load();
         configKeyBinding = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "config.chatimage.key",
                 InputConstants.Type.KEYSYM,
@@ -63,6 +62,12 @@ public class ChatImageClient implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher
                 .register(
                         LiteralArgumentBuilder.<FabricClientCommandSource>literal("chatimage").executes(ChatImageCommand::help)
+                                .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("upload")
+                                        .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("path", greedyString())
+                                                .executes(context -> {
+                                                    io.github.kituin.chatimage.transfer.ClientTransfers.uploadCommand(com.mojang.brigadier.arguments.StringArgumentType.getString(context, "path"));
+                                                    return 1;
+                                                })))
                                 .then(LiteralArgumentBuilder.<FabricClientCommandSource>literal("send")
                                         .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("name", string())
                                                 .then(RequiredArgumentBuilder.<FabricClientCommandSource, String>argument("url", greedyString())
@@ -82,8 +87,6 @@ public class ChatImageClient implements ClientModInitializer {
                                         .executes(ChatImageCommand::reloadConfig)
                                 )
                 ));
-        ClientPlayNetworking.registerGlobalReceiver(DownloadFileChannelPacket.ID, (payload, context) -> ChatImagePacket.clientDownloadFileChannelReceived(payload));
-        ClientPlayNetworking.registerGlobalReceiver(FileInfoChannelPacket.ID, (payload, context) -> ChatImagePacket.clientGetFileChannelReceived(payload));
 
     }
 }

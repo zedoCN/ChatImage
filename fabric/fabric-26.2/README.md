@@ -7,7 +7,7 @@
 
 这是 [zedoCN/ChatImage](https://github.com/zedoCN/ChatImage) 的非官方移植版本，上游项目为 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage)。
 
-1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.2%2B26.2) 下载 **`ChatImage-1.4.7-port.2+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
+1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.3%2B26.2) 下载 **`ChatImage-1.4.7-port.3+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
 2. 使用 Minecraft **26.2**、Fabric Loader **0.19.3+**、Fabric API **0.158.0+26.2** 和 **Java 25**。
 3. 关闭游戏，将 JAR 放入该实例的 `mods` 目录；HMCL 可在版本管理中打开实例文件夹。已有其他版本 ChatImage 时先移出旧 JAR，避免重复加载。
 4. 启动游戏。发送图片链接或 CICode，把鼠标移到绿色图片名称上查看图片；按 **End** 打开设置。
@@ -30,7 +30,7 @@ cd fabric/fabric-26.2
 
 Windows 使用 `gradlew.bat build`。
 
-产物：`build/libs/ChatImage-1.4.7-port.2+26.2.jar`。复制到实例的 `mods` 后重启游戏。
+产物：`build/libs/ChatImage-1.4.7-port.3+26.2.jar`。复制到实例的 `mods` 后重启游戏。
 ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖旧版 ActionLib。
 
 ## 用法
@@ -40,7 +40,7 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 - `/chatimage send 名称 URL`、`/chatimage url URL`、`/chatimage reload`。
 - End 打开设置，或在 Mod Menu 中打开 ChatImage 配置。
 - 本地文件使用 `file:///绝对路径`；拖入聊天窗口也可生成 CICode。
-- 本地图片跨玩家传输需要服务器也加载对应模组。公开网络图片不依赖服务端模组。
+- 本地图片跨玩家传输需要服务器也加载对应模组。公开网络图片不依赖服务端模组。服务端托管要求双方使用 port.3+，不再使用旧版基于本机路径的传输协议。
 - macOS 图片粘贴通过 AppKit 辅助进程读取 PNG/TIFF；不启动 AWT GUI，不会再以空字符串覆盖普通文本。
 
 ## 移植内容
@@ -63,12 +63,63 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 python3 tests/launch_hmcl_packaged.py \
   --instance '/Applications/HMCL/.minecraft/versions/26.2-Fabric 0.19.3' \
   --game-dir run \
-  --jar build/libs/ChatImage-1.4.7-port.2+26.2.jar \
+  --jar build/libs/ChatImage-1.4.7-port.3+26.2.jar \
   --java-home /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ```
 
 测试目录、桥接配置及其认证信息、缓存、世界和运行日志被 Git 忽略。启动脚本只使用离线测试身份，不读取 HMCL 账户凭据。
 
-## 1.4.7-port.2 更新
 
-修复 26.2 按键设置的 ChatImage 分类标题显示原始翻译键的问题，补齐简体中文、繁体中文、英文和韩文分类翻译。End 默认键位不变。
+## port.3：可选服务端图片托管
+
+客户端与 Fabric 服务器可安装同一个 JAR。只装客户端时仍可查看网络图片；服务器也装 port.3+ 后，才启用本地图片上传。
+
+- **拖入 / 粘贴**：打开聊天框，将文件拖入或粘贴剪贴板图片；检查输入内容后按 Enter，上传成功才发送图片引用。每条消息支持一张本地图片。失败不会把本机文件路径发到公屏，可用聊天历史重新编辑、重试。
+- **只上传、不发公屏**：`/chatimage upload <本地路径>`。例如 `/chatimage upload "/Users/me/Pictures/test image.png"`。
+- **上传剪贴板图片**：`/chatimage upload clipboard`。
+- **返回引用**：成功消息提供“复制图片引用”和“填入聊天”。引用形式为 `[[CICode,url=mcimage://服务器ID/图片SHA256]]`，可再次发送；也可使用 `/chatimage url mcimage://服务器ID/图片SHA256`。
+- 引用仅能在所属服务器取回，不能作为浏览器中的公共图床 URL。其他玩家需要对应客户端模组才能显示图片。
+
+服务器保存的是图片内容，聊天引用不包含上传者的本机路径。图片存于 `<世界目录>/chatimage-images/`，重启后引用仍有效；不要删除或单独更换目录里的 `server-id.txt`。同一内容去重，过期按最近成功上传时间计算。
+
+### 服务端配置
+
+首次启动生成 `config/chatimage-server.json`。修改后重启服务器生效。
+
+```json
+{
+  "enabled": true,
+  "compressionFormat": "webp",
+  "compressionLevel": "medium",
+  "maxFileBytes": 5242880,
+  "maxStorageBytes": 536870912,
+  "retentionHours": 168,
+  "uploadIntervalSeconds": 5
+}
+```
+
+| 设置 | 含义 |
+| --- | --- |
+| `enabled` | 是否启用托管和上传；关闭后仍可使用普通网络图片 |
+| `compressionFormat` | `webp`（默认，有损压缩静态图）或 `none`（保留原文件） |
+| `compressionLevel` | `low` / `medium` / `high`，分别对应质量 85 / 70 / 45；压缩强度越高，通常越小、画质损失越明显 |
+| `maxFileBytes` | 单张上传大小，默认 5 MiB，硬上限 10 MiB |
+| `maxStorageBytes` | 总存储配额，默认 512 MiB；满额时拒绝新图片 |
+| `retentionHours` | 图片保留时间，默认 168 小时；服务器运行时定期清理 |
+| `uploadIntervalSeconds` | 同一玩家开始上传的最小间隔，默认 5 秒 |
+
+静态 PNG/JPEG/WebP 默认转为有损 WebP，保留透明度，不缩放尺寸。GIF 和已有 WebP 动图本轮**保留原文件**，不会变成第一帧，也不做动图转码。引用的 SHA-256 对应服务器最终保存的文件，压缩后通常与原文件哈希不同。
+
+服务端校验图片格式、文件大小、帧数和像素预算；单帧至多 1600 万像素，整个动画至多 3200 万像素、256 帧。分块须有序，连续 90 秒没有进展或总传输超过 30 分钟会超时。内存中的传输总预算为 64 MiB，磁盘读写和压缩在独立工作线程执行。
+
+### 自动动画播放
+
+默认按 GIF / WebP 文件的**每帧时长和循环次数**播放，使用实际时间计时，不依赖 Minecraft 渲染 FPS。无限循环保持无限，有限循环结束后停在最后一帧；缺失或为 0 的帧时长按 100 ms 处理。
+
+End 设置中可关闭“按图片时序自动播放”，改用 **1–60 FPS** 手动速度（仍遵循文件循环次数）。设置保存在 `config/chatimage-playback.json`。升级后默认启用自动模式，旧 `gifSpeed` 的“渲染次数”含义不再使用。
+
+### 构建检查与依赖
+
+`./gradlew build` 自动执行存储、压缩、动画元数据和计时回归检查；也可单独运行 `./gradlew transferChecks`。独立服务端、多客户端与 MCP 的验证记录见 [port.3 验证](tests/PORT3-VALIDATION.md)。
+
+WebP 编码使用 [usefulness/webp-imageio](https://github.com/usefulness/webp-imageio) 0.11.0（Apache-2.0，含原生库）；WebP 解码使用 [Glavo/jwebp](https://github.com/Glavo/jwebp) 0.2.0（Apache-2.0，依据该发布版本的 POM 和源码头部）。依赖已随 JAR 内嵌，不要求服主额外安装命令行编码器。编码原生库的平台范围见依赖项目说明；本轮在 macOS arm64 实机验证。

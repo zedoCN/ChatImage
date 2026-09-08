@@ -14,11 +14,8 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import io.github.kituin.chatimage.network.FileChannelPacket;
-import static io.github.kituin.ChatImageCode.NetworkHelper.createFilePacket;
 import static io.github.kituin.chatimage.client.ChatImageClient.CONFIG;
 import static io.github.kituin.chatimage.client.ChatImageClient.MOD_ID;
-import static io.github.kituin.chatimage.network.ChatImagePacket.*;
 import static io.github.kituin.chatimage.tool.SimpleUtil.createTranslatableComponent;
 
 public class ChatImageClientAdapter implements IClientAdapter {
@@ -63,12 +60,8 @@ public class ChatImageClientAdapter implements IClientAdapter {
 
     @Override
     public void sendToServer(String url, File file, boolean isToServer) {
-        if (isToServer) {
-            List<String> stringList = createFilePacket(url, file);
-            sendPacketAsync(FileChannelPacket::new, stringList);
-        } else {
-            loadFromServer(url);
-        }
+        // Legacy local paths must never trigger an upload while rendering received chat.
+        // Uploads are now explicit and capability-negotiated by ClientTransfers.
     }
 
     @Override

@@ -1,0 +1,24 @@
+name: Fabric 26.2 build and transfer checks
+on:
+  push:
+    branches: ['codex/fabric-26.2']
+    paths: ['fabric/fabric-26.2/**', '.github/workflows/fabric-26.2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Build and verify codecs, storage and timing
+        working-directory: fabric/fabric-26.2
+        run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChatImage-Fabric-26.2
+          path: fabric/fabric-26.2/build/libs/*.jar
