@@ -22,6 +22,8 @@ public final class ServerTransfers {
         public String compressionFormat = "webp";
         public String compressionLevel = "medium";
         public int maxFileBytes = 5 * 1024 * 1024;
+        public long maxInFlightBytes = 64L * 1024 * 1024;
+        public boolean recompressWebp = false;
         public long maxStorageBytes = 512L * 1024 * 1024;
         public int retentionHours = 168;
         public int uploadIntervalSeconds = 5;
@@ -45,8 +47,8 @@ public final class ServerTransfers {
         Path file = FabricLoader.getInstance().getConfigDir().resolve("chatimage-server.json");
         if (!Files.exists(file)) Files.writeString(file, gson.toJson(new Config()));
         config = gson.fromJson(Files.readString(file), Config.class);
-        if (config == null || config.maxFileBytes < 8 || config.maxFileBytes > ImageStore.HARD_MAX_BYTES
-                || config.maxStorageBytes < config.maxFileBytes || config.retentionHours < 1
+        if (config == null || config.maxFileBytes < 8 || config.maxFileBytes > Integer.MAX_VALUE - 8 || config.maxInFlightBytes < config.maxFileBytes
+                || config.maxStorageBytes < config.maxFileBytes || config.retentionHours < 0
                 || config.uploadIntervalSeconds < 0 || !Set.of("webp", "none").contains(config.compressionFormat)
                 || !Set.of("low", "medium", "high").contains(config.compressionLevel)) throw new IOException("Invalid chatimage-server.json limits");
         store = new ImageStore(server.getWorldPath(LevelResource.ROOT).resolve("chatimage-images"),
@@ -127,7 +129,7 @@ public final class ServerTransfers {
                     if (size < 8 || size > config.maxFileBytes) throw new IOException("size");
                     if (uploads.containsKey(who)) throw new IOException("busy");
                     if (now - lastUpload.getOrDefault(who, 0L) < config.uploadIntervalSeconds * 1000L) throw new IOException("rate");
-                    if (inFlight() + size > 64L * 1024 * 1024) throw new IOException("busy");
+                    if (inFlight() + size > config.maxInFlightBytes) throw new IOException("busy");
                     lastUpload.put(who, now);
                     uploads.put(who, new Upload(id, size, new ByteArrayOutputStream(size), now, now));
                     reply(player, "ready", id);
@@ -143,7 +145,8 @@ public final class ServerTransfers {
                         uploads.remove(who);
                         byte[] original = u.bytes.toByteArray();
                         ImageStore.validate(original);
-                        byte[] stored = ImageCompression.compress(original, config.compressionFormat, config.compressionLevel);
+                        byte[] stored = !config.recompressWebp && ImageCompression.isWebp(original) ? original : ImageCompression.compress(original, config.compressionFormat, config.compressionLevel);
+                        if (stored.length > original.length) stored = original;
                         String hash = store.put(stored);
                         reply(player, "stored", id, "reference", "mcimage://" + store.serverId + "/" + hash,
                                 "sourceHash", ImageStore.hash(original), "originalBytes", original.length, "storedBytes", stored.length);
@@ -154,9 +157,9 @@ public final class ServerTransfers {
                 }
                 case "get" -> {
                     if (!store.serverId.equals(p.get("server").getAsString())) throw new IOException("server");
-                    if (downloads.containsKey(who) || inFlight() + config.maxFileBytes > 64L * 1024 * 1024) throw new IOException("busy");
+                    if (downloads.containsKey(who) || inFlight() + config.maxFileBytes > config.maxInFlightBytes) throw new IOException("busy");
                     String hash = p.get("hash").getAsString();
-                    byte[] data = store.get(hash);
+                    byte[] data = store.get(hash, config.maxInFlightBytes - inFlight());
                     downloads.put(who, new Download(id, hash, data, now, now, 0));
                     reply(player, "data_begin", id, "size", data.length, "hash", hash);
                 }

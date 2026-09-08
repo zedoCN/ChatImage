@@ -7,7 +7,7 @@
 
 这是 [zedoCN/ChatImage](https://github.com/zedoCN/ChatImage) 的非官方移植版本，上游项目为 [kitUIN/ChatImage](https://github.com/kitUIN/ChatImage)。
 
-1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.3%2B26.2) 下载 **`ChatImage-1.4.7-port.3+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
+1. 在 [Release 下载页](https://github.com/zedoCN/ChatImage/releases/tag/v1.4.7-port.4%2B26.2) 下载 **`ChatImage-1.4.7-port.4+26.2.jar`**。`-sources.jar` 是开发源码，不能作为游戏模组安装。
 2. 使用 Minecraft **26.2**、Fabric Loader **0.19.3+**、Fabric API **0.158.0+26.2** 和 **Java 25**。
 3. 关闭游戏，将 JAR 放入该实例的 `mods` 目录；HMCL 可在版本管理中打开实例文件夹。已有其他版本 ChatImage 时先移出旧 JAR，避免重复加载。
 4. 启动游戏。发送图片链接或 CICode，把鼠标移到绿色图片名称上查看图片；按 **End** 打开设置。
@@ -30,7 +30,7 @@ cd fabric/fabric-26.2
 
 Windows 使用 `gradlew.bat build`。
 
-产物：`build/libs/ChatImage-1.4.7-port.3+26.2.jar`。复制到实例的 `mods` 后重启游戏。
+产物：`build/libs/ChatImage-1.4.7-port.4+26.2.jar`。复制到实例的 `mods` 后重启游戏。
 ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖旧版 ActionLib。
 
 ## 用法
@@ -63,7 +63,7 @@ ChatImageCode 已内嵌；本目标自行注册 `show_chatimage`，不再依赖�
 python3 tests/launch_hmcl_packaged.py \
   --instance '/Applications/HMCL/.minecraft/versions/26.2-Fabric 0.19.3' \
   --game-dir run \
-  --jar build/libs/ChatImage-1.4.7-port.3+26.2.jar \
+  --jar build/libs/ChatImage-1.4.7-port.4+26.2.jar \
   --java-home /opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 ```
 
@@ -103,14 +103,14 @@ python3 tests/launch_hmcl_packaged.py \
 | `enabled` | 是否启用托管和上传；关闭后仍可使用普通网络图片 |
 | `compressionFormat` | `webp`（默认，有损压缩静态图）或 `none`（保留原文件） |
 | `compressionLevel` | `low` / `medium` / `high`，分别对应质量 85 / 70 / 45；压缩强度越高，通常越小、画质损失越明显 |
-| `maxFileBytes` | 单张上传大小，默认 5 MiB，硬上限 10 MiB |
+| `maxFileBytes` | 单张上传大小，默认 5 MiB；由服务端配置下发，调整无需编译；不能超过 maxInFlightBytes |
 | `maxStorageBytes` | 总存储配额，默认 512 MiB；满额时拒绝新图片 |
-| `retentionHours` | 图片保留时间，默认 168 小时；服务器运行时定期清理 |
+| `retentionHours` | 图片保留时间，默认 168 小时；0 表示永久保留 |
 | `uploadIntervalSeconds` | 同一玩家开始上传的最小间隔，默认 5 秒 |
 
-静态 PNG/JPEG/WebP 默认转为有损 WebP，保留透明度，不缩放尺寸。GIF 和已有 WebP 动图本轮**保留原文件**，不会变成第一帧，也不做动图转码。引用的 SHA-256 对应服务器最终保存的文件，压缩后通常与原文件哈希不同。
+静态 PNG/JPEG 默认转为有损 WebP；已有 WebP 默认保留，recompressWebp=true 时重新压缩。压缩结果更大时保留输入。静态图压缩，保留透明度，不缩放尺寸。GIF 和已有 WebP 动图本轮**保留原文件**，不会变成第一帧，也不做动图转码。引用的 SHA-256 对应服务器最终保存的文件，压缩后通常与原文件哈希不同。
 
-服务端校验图片格式、文件大小、帧数和像素预算；单帧至多 1600 万像素，整个动画至多 3200 万像素、256 帧。分块须有序，连续 90 秒没有进展或总传输超过 30 分钟会超时。内存中的传输总预算为 64 MiB，磁盘读写和压缩在独立工作线程执行。
+服务端校验图片格式、文件大小、帧数和像素预算；单帧至多 1600 万像素，整个动画至多 3200 万像素、256 帧。分块须有序，连续 90 秒没有进展或总传输超过 30 分钟会超时。内存中的传输数据预算 maxInFlightBytes 默认 64 MiB（不含解码与临时副本，可配置），磁盘读写和压缩在独立工作线程执行。
 
 ### 自动动画播放
 
@@ -123,3 +123,12 @@ End 设置中可关闭“按图片时序自动播放”，改用 **1–60 FPS** 
 `./gradlew build` 自动执行存储、压缩、动画元数据和计时回归检查；也可单独运行 `./gradlew transferChecks`。独立服务端、多客户端与 MCP 的验证记录见 [port.3 验证](tests/PORT3-VALIDATION.md)。
 
 WebP 编码使用 [usefulness/webp-imageio](https://github.com/usefulness/webp-imageio) 0.11.0（Apache-2.0，含原生库）；WebP 解码使用 [Glavo/jwebp](https://github.com/Glavo/jwebp) 0.2.0（Apache-2.0，依据该发布版本的 POM 和源码头部）。依赖已随 JAR 内嵌，不要求服主额外安装命令行编码器。编码原生库的平台范围见依赖项目说明；本轮在 macOS arm64 实机验证。
+
+## port.4：更大上传与永久保留
+
+单张上传大小由服务端 maxFileBytes 决定，移除旧版 10/20 MiB 写死限制；port.3 客户端仍限制 10 MiB。
+客户端默认仅在超限时降低 WebP 质量，必要时缩小尺寸，原文件不改动；GIF/动态 WebP 超限时提示，不扁平化。
+End 设置可关闭“超限自动压缩”。config/chatimage-upload.json 中 maxSourceBytes 默认 64 MiB，限制本地源文件读取及接收图片的内存大小，可配置。
+服务端 maxInFlightBytes 必须不小于 maxFileBytes；大图片仍须满足像素/帧数保护限制。
+`retentionHours: 0` 表示永久保留，不按时间删除。存储额度满时拒绝新图片，不淘汰已有图片。
+原有默认设置不变；可选配置示例：`maxFileBytes: 20971520`、`maxStorageBytes: 2147483648`、`retentionHours: 0`、`uploadIntervalSeconds: 1`。

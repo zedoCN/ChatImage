@@ -117,23 +117,20 @@ public final class ClientTransfers {
                 if (path.startsWith("\"") && path.endsWith("\"")) path = path.substring(1, path.length() - 1);
                 Path file = path.startsWith("file:") ? Path.of(URI.create(path)) : Path.of(path);
                 if (!Files.isRegularFile(file)) throw new IOException("file");
-                if (Files.size(file) > limit) throw new IOException("size");
-                byte[] bytes;
-                try (InputStream stream = Files.newInputStream(file)) { bytes = stream.readNBytes(limit + 1); }
-                if (bytes.length > limit) throw new IOException("size");
-                ImageStore.validate(bytes);
-                return bytes;
+                return UploadPreparation.prepare(file, limit, UploadOptions.get().autoCompress, UploadOptions.get().maxSourceBytes);
             } catch (Exception e) { throw new java.util.concurrent.CompletionException(e); }
         }).whenComplete((bytes, error) -> mc().execute(() -> {
             if (session != generation) return;
             preparing = false;
             if (error != null) {
                 String reason = error.getCause() instanceof IOException ? error.getCause().getMessage() : "file";
-                message("error", Component.translatable("transfer.chatimage.reason." + (Set.of("size", "format", "pixels").contains(reason == null ? "" : reason) ? reason : "file")));
+                message("limits", limit);
+                message("error", Component.translatable("transfer.chatimage.reason." + (Set.of("size", "format", "pixels", "animation", "source", "compression").contains(reason == null ? "" : reason) ? reason : "file")));
                 return;
             }
-            active = new Pending(bytes, null, done);
-            send("begin", active.id, "size", bytes.length);
+            if (bytes.originalBytes() != bytes.bytes().length) message("precompressed", bytes.originalBytes(), bytes.bytes().length);
+            active = new Pending(bytes.bytes(), null, done);
+            send("begin", active.id, "size", bytes.bytes().length);
         }));
     }
     public static boolean allowChat(String original) {
@@ -183,8 +180,8 @@ public final class ClientTransfers {
             String op = p.get("op").getAsString();
             if (op.equals("caps")) {
                 serverId = UUID.fromString(p.get("server").getAsString()).toString();
-                maxBytes = Math.min(ImageStore.HARD_MAX_BYTES, p.get("max").getAsInt());
-                enabled = p.get("enabled").getAsBoolean(); return;
+                maxBytes = p.get("max").getAsInt();
+                enabled = maxBytes >= 8 && maxBytes < Integer.MAX_VALUE - 8 && p.get("enabled").getAsBoolean(); return;
             }
             if (active == null || !active.id.equals(p.get("id").getAsString())) return;
             active.progress = System.currentTimeMillis();
@@ -193,7 +190,7 @@ public final class ClientTransfers {
                     if (active.upload == null) throw new IOException();
                     int offset = op.equals("ready") ? 0 : p.get("offset").getAsInt();
                     if (offset < 0 || offset >= active.upload.length || offset % TransferPayload.CHUNK != 0) throw new IOException();
-                    int bucket = offset * 4 / active.upload.length;
+                    int bucket = (int) ((long) offset * 4 / active.upload.length);
                     if (bucket > active.progressBucket) { active.progressBucket = bucket; message("progress", bucket * 25); }
                     int end = Math.min(offset + TransferPayload.CHUNK, active.upload.length);
                     send("chunk", active.id, "offset", offset, "data", Base64.getEncoder().encodeToString(Arrays.copyOfRange(active.upload, offset, end)));
@@ -207,7 +204,7 @@ public final class ClientTransfers {
                 case "data_begin" -> {
                     if (active.reference == null) throw new IOException();
                     active.size = p.get("size").getAsInt();
-                    if (active.size < 8 || active.size > ImageStore.HARD_MAX_BYTES || !active.reference.endsWith("/" + p.get("hash").getAsString())) throw new IOException();
+                    if (active.size < 8 || active.size > UploadOptions.get().maxSourceBytes || !active.reference.endsWith("/" + p.get("hash").getAsString())) throw new IOException();
                     active.download = new ByteArrayOutputStream(active.size);
                     send("read", active.id, "offset", 0);
                 }

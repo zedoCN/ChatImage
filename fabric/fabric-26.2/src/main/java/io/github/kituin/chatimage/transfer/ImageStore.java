@@ -11,7 +11,6 @@ import javax.imageio.stream.MemoryCacheImageInputStream;
 
 /** Server-owned, content-addressed image storage. No client-supplied filesystem paths. */
 public final class ImageStore {
-    public static final int HARD_MAX_BYTES = 10 * 1024 * 1024;
     private final Path root;
     private final long quota, retentionMillis;
     private final Clock clock;
@@ -33,7 +32,6 @@ public final class ImageStore {
 
     public static void validate(byte[] bytes) throws IOException {
         if (ImageCompression.isWebp(bytes)) {
-            if (bytes.length > HARD_MAX_BYTES) throw new IOException("size");
             try (var reader = org.glavo.webp.WebPImageReader.open(new ByteArrayInputStream(bytes))) {
                 long pixels = (long) reader.getWidth() * reader.getHeight();
                 if (pixels <= 0 || pixels > 16_000_000L || reader.getFrameCount() > 256 || pixels * reader.getFrameCount() > 32_000_000L) throw new IOException("pixels");
@@ -43,7 +41,7 @@ public final class ImageStore {
             } catch (Exception e) { throw new IOException("format", e); }
             return;
         }
-        if (bytes.length < 8 || bytes.length > HARD_MAX_BYTES) throw new IOException("size");
+        if (bytes.length < 8) throw new IOException("size");
         if (bytes[0] == 'G' && bytes.length >= 10) {
             long canvas = ((bytes[6] & 255) | (bytes[7] & 255) << 8) * (long) ((bytes[8] & 255) | (bytes[9] & 255) << 8);
             if (canvas <= 0 || canvas > 16_000_000) throw new IOException("pixels");
@@ -98,9 +96,12 @@ public final class ImageStore {
     }
 
     public byte[] get(String id) throws IOException {
+        return get(id, Integer.MAX_VALUE - 8L);
+    }
+    public byte[] get(String id, long maxBytes) throws IOException {
         Path file = path(id);
         if (!Files.isRegularFile(file) || expired(file)) throw new IOException("missing");
-        if (Files.size(file) > HARD_MAX_BYTES) throw new IOException("size");
+        if (Files.size(file) > Math.min(maxBytes, Math.min(quota, Integer.MAX_VALUE - 8L))) throw new IOException("size");
         byte[] data = Files.readAllBytes(file);
         if (!hash(data).equals(id)) throw new IOException("hash");
         return data;
@@ -111,7 +112,7 @@ public final class ImageStore {
         return root.resolve(id + ".bin");
     }
     private boolean expired(Path p) throws IOException {
-        return clock.millis() - Files.getLastModifiedTime(p).toMillis() >= retentionMillis;
+        return retentionMillis > 0 && clock.millis() - Files.getLastModifiedTime(p).toMillis() >= retentionMillis;
     }
     public void cleanup() throws IOException {
         try (var entries = Files.newDirectoryStream(root, "*.bin")) {

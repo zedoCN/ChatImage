@@ -16,15 +16,23 @@ public final class ImageCompression {
     public static boolean animatedWebp(byte[] b) {
         return isWebp(b) && b.length > 20 && b[12] == 'V' && b[15] == 'X' && (b[20] & 2) != 0;
     }
+    public static java.awt.image.BufferedImage read(byte[] input) throws IOException {
+        if (!isWebp(input)) return ImageIO.read(new ByteArrayInputStream(input));
+        var reader = new com.luciad.imageio.webp.WebPImageReaderSpi().createReaderInstance();
+        try (var stream = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(input))) {
+            reader.setInput(stream); return reader.read(0);
+        } finally { reader.dispose(); }
+    }
     public static byte[] compress(byte[] input, String format, String level) throws IOException {
         if (format.equals("none") || animatedWebp(input) || input.length >= 6 && input[0] == 'G' && input[1] == 'I' && input[2] == 'F') return input;
         if (!format.equals("webp")) throw new IOException("compression");
         float quality = switch (level) { case "low" -> 0.85f; case "medium" -> 0.70f; case "high" -> 0.45f; default -> throw new IOException("compression"); };
-        var image = ImageIO.read(new ByteArrayInputStream(input));
+        var image = read(input);
         if (image == null) throw new IOException("format");
-        Iterator<ImageWriter> writers = ImageIO.getImageWritersByMIMEType("image/webp");
-        if (!writers.hasNext()) throw new IOException("compression");
-        ImageWriter writer = writers.next();
+        try { return encode(image, quality); } finally { image.flush(); }
+    }
+    public static byte[] encode(java.awt.image.BufferedImage image, float quality) throws IOException {
+        ImageWriter writer = new com.luciad.imageio.webp.WebPImageWriterSpi().createWriterInstance();
         try (var bytes = new ByteArrayOutputStream(); var output = new MemoryCacheImageOutputStream(bytes)) {
             WebPWriteParam param = (WebPWriteParam) writer.getDefaultWriteParam();
             param.setCompressionType(CompressionType.Lossy);
@@ -33,9 +41,8 @@ public final class ImageCompression {
             writer.setOutput(output);
             writer.write(null, new IIOImage(image, null, null), param);
             output.flush();
-            if (bytes.size() > ImageStore.HARD_MAX_BYTES) throw new IOException("size");
             return bytes.toByteArray();
         } catch (LinkageError e) { throw new IOException("compression", e); }
-        finally { writer.dispose(); image.flush(); }
+        finally { writer.dispose(); }
     }
 }

@@ -49,6 +49,10 @@ public class ConfigScreen extends Screen {
             io.github.kituin.chatimage.animation.Playback.save();
             button.setMessage(getEnable("animation.chatimage.auto", io.github.kituin.chatimage.animation.Playback.automatic));
         }).tooltip(Tooltip.create(Component.translatable("animation.chatimage.tooltip"))).build());
+        adder.addChild(Button.builder(getEnable("upload.chatimage.auto", io.github.kituin.chatimage.transfer.UploadOptions.get().autoCompress), button -> {
+            var options = io.github.kituin.chatimage.transfer.UploadOptions.get(); options.autoCompress = !options.autoCompress;
+            io.github.kituin.chatimage.transfer.UploadOptions.save(); button.setMessage(getEnable("upload.chatimage.auto", options.autoCompress));
+        }).build());
         adder.addChild(new GifSlider());
         adder.addChild(new TimeOutSlider());
         adder.addChild(Button.builder(Component.translatable("padding.chatimage.gui"), (button) -> {

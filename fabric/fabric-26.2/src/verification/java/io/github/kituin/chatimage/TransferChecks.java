@@ -47,7 +47,13 @@ public final class TransferChecks {
         }
         rejects(() -> ImageStore.validate(new byte[0]), "Empty image");
         rejects(() -> ImageStore.validate("not an image at all".getBytes()), "Invalid format");
-        rejects(() -> ImageStore.validate(new byte[ImageStore.HARD_MAX_BYTES + 1]), "Size ceiling");
+
+        BufferedImage large = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < 2048; y++) for (int x = 0; x < 2048; x++) large.setRGB(x, y, random.nextInt());
+        ByteArrayOutputStream largeOutput = new ByteArrayOutputStream(); ImageIO.write(large, "png", largeOutput);
+        byte[] largePng = largeOutput.toByteArray();
+        check(largePng.length > 10 * 1024 * 1024 && largePng.length <= 20 * 1024 * 1024, "Large PNG fixture exceeds old limit");
+        ImageStore.validate(largePng); count++;
         Path directory = Files.createTempDirectory("chatimage-check-");
         Clock clock = Clock.fixed(Instant.parse("2026-09-08T00:00:00Z"), ZoneOffset.UTC);
         ImageStore store = new ImageStore(directory, png.length + 10, 1000, clock);
@@ -61,6 +67,24 @@ public final class TransferChecks {
         ImageStore expired = new ImageStore(directory, png.length + 10, 1000, Clock.offset(clock, Duration.ofSeconds(2)));
         rejects(() -> expired.get(id), "Expiry");
         check(!Files.exists(directory.resolve(id + ".bin")), "Expiry cleanup");
+        ImageStore permanent = new ImageStore(directory, png.length + 10, 0, clock);
+        String permanentId = permanent.put(png);
+        ImageStore future = new ImageStore(directory, png.length + 10, 0, Clock.offset(clock, Duration.ofDays(36500)));
+        future.cleanup();
+        check(Arrays.equals(future.get(permanentId), png), "Permanent retention survives restart and cleanup after 100 years");
+        rejects(() -> future.put(medium), "Permanent storage retains quota");
+        check(Arrays.equals(future.get(permanentId), png), "Quota rejection preserves existing images");
+        Path source = Files.createTempFile("chatimage-upload-", ".png");
+        Files.write(source, png);
+        check(Arrays.equals(UploadPreparation.prepare(source, png.length, true, png.length + 1).bytes(), png), "Under limit uploads original");
+        rejects(() -> UploadPreparation.prepare(source, 100, false, png.length + 1), "Disabled precompression");
+        rejects(() -> UploadPreparation.prepare(source, 100, true, 10), "Local read budget");
+        var prepared = UploadPreparation.prepare(source, 500, true, png.length + 1);
+        check(prepared.bytes().length <= 500 && ImageCompression.isWebp(prepared.bytes()), "Oversized image fits after compression and resize");
+        check(Arrays.equals(Files.readAllBytes(source), png), "Source file unchanged");
+        Files.write(source, gif); rejects(() -> UploadPreparation.prepare(source, 8, true, gif.length + 1), "GIF not flattened");
+        Files.write(source, animated); rejects(() -> UploadPreparation.prepare(source, 8, true, animated.length + 1), "Animated WebP not flattened");
+        Files.delete(source);
         Timeline timeline = new Timeline(new int[]{100, 400, 200}, 2);
         check(timeline.indexAt(99, true, 10) == 0 && timeline.indexAt(100, true, 10) == 1, "Unequal frame delays");
         check(timeline.indexAt(500, true, 10) == 2 && timeline.indexAt(700, true, 10) == 0, "Loop timing");
